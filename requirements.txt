@@ -8,4 +8,3 @@ requests
 werkzeug
 scikit-learn
 gunicorn
-pickle5
