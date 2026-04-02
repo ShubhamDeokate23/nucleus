@@ -1,0 +1,2076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.18.1/plotly.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header h1 {
+            color: white;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            margin: 1rem 2rem;
+            border-radius: 15px;
+            padding: 0.5rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover, .nav-tab.active {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #4a5568;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            flex: 0 0 auto;
+            width: auto;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        select, input {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            font-size: 1rem;
+            min-width: 150px;
+            max-width: 260px;
+            width: 100%;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #17a2b8, #6c757d);
+        }
+
+        .download-section {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            text-align: center;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .chart-container {
+            height: 400px;
+            margin: 1rem 0;
+        }
+
+        .map-container {
+            height: 500px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+
+        .alert-section {
+            background: linear-gradient(45deg, #ff9a56, #ff6b9d);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .alert-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .alert-form input, .alert-form select, .alert-form textarea {
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .alert-form textarea {
+            grid-column: 1 / -1;
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .disease-info {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+        }
+
+        .safety-tips {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .tip-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+        }
+
+        .hospital-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .hospital-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #667eea;
+        }
+
+        .hospital-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 0.5rem;
+        }
+
+        .hospital-details {
+            color: #666;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            z-index: 10000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .nav-tabs { margin: 1rem; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .download-buttons { flex-direction: column; }
+        }
+
+                #ml .ml-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        #ml .ml-card-title {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 25px;
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+        }
+
+        #ml .ml-form-section {
+            margin-bottom: 25px;
+        }
+
+        #ml .ml-section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 15px;
+            padding: 10px 0;
+            border-left: 4px solid #667eea;
+            padding-left: 15px;
+        }
+
+        #ml .ml-form-group {
+            margin-bottom: 20px;
+        }
+
+        #ml .ml-form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        #ml .ml-label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 0.95rem;
+        }
+
+        #ml .ml-field-description {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        #ml .ml-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        #ml .ml-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 10px rgba(102, 126, 234, 0.2);
+        }
+
+        #ml .ml-btn {
+            width: 100%;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        #ml .ml-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        #ml .ml-disease-info {
+            margin-top: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+
+        #ml .ml-risk-result {
+            font-size: 1.2rem;
+            font-weight: 600;
+            text-align: center;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+
+        #ml .ml-risk-low {
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+        }
+
+        #ml .ml-risk-medium {
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            color: #856404;
+        }
+
+        #ml .ml-risk-high {
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+        }
+
+        #ml .ml-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        #ml .ml-info-item {
+            background: rgba(255,255,255,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #ml .ml-info-label {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        #ml .ml-info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        @keyframes ml-loading {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>Disease Analysis & Monitoring Dashboard</h1>
+            <div class="user-info" style="display: flex; align-items: center; gap: 1rem;">
+                <span id="userWelcome" style="color: rgba(255,255,255,0.9); font-size: 0.9rem;"></span>
+                <!-- <button class="btn" onclick="logout()" style="padding: 0.5rem 1rem; font-size: 0.8rem; background: rgba(255,255,255,0.2);"> -->
+                    <!-- Logout
+                </button> -->
+            </div>
+        </div>
+    </div>
+
+<div class="nav-tabs">
+    <button class="nav-tab active" onclick="showTab(event,'overview')">Overview</button>
+    <button class="nav-tab" onclick="showTab(event,'trends')">Trends Analysis</button>
+    <button class="nav-tab" onclick="showTab(event,'geographic')">Geographic Analysis</button>
+    <button class="nav-tab" onclick="showTab(event,'hospitals')">Hospital Data</button>
+    <button class="nav-tab" onclick="showTab(event,'reports')">Reports & Downloads</button>
+    <button class="nav-tab" onclick="showTab(event,'ml')">Disease Trend Analysis using ML</button>
+    <button class="nav-tab" onclick="showTab(event,'alerts')">Alerts & Safety</button>
+</div>
+
+<div class="container">
+    <div class="loading" id="loading">Loading data...</div>
+
+    <!-- Overview Tab -->
+    <div id="overview" class="tab-content active">
+        <div class="controls">
+            <div class="control-group">
+                <label>State/UT:</label>
+                <select id="stateSelect">
+                    <option value="all">All States</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>City:</label>
+                <select id="citySelect">
+                    <option value="all">All Cities</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Year:</label>
+                <select id="yearSelect">
+                    <option value="all">All Years</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Disease:</label>
+                <select id="diseaseSelect">
+                    <option value="all">All Diseases</option>
+                </select>
+            </div>
+            <button class="btn" onclick="updateOverview()">Update Dashboard</button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card" style="background: linear-gradient(45deg, #ff6b6b, #ee5a24);">
+                <div class="stat-number" id="totalCases">0</div>
+                <div class="stat-label">Total Cases</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(45deg, #ff9f43, #feca57);">
+                <div class="stat-number" id="totalDeaths">0</div>
+                <div class="stat-label">Total Deaths</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(45deg, #5f27cd, #341f97);">
+                <div class="stat-number" id="affectedStates">0</div>
+                <div class="stat-label">Affected States</div>
+            </div>
+            <div class="stat-card" style="background: linear-gradient(45deg, #00d2d3, #54a0ff);">
+                <div class="stat-number" id="avgTemp">0</div>
+                <div class="stat-label">Avg Temperature (K)</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-title">Cases Timeline</div>
+                <div class="chart-container">
+                    <canvas id="casesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Deaths Timeline</div>
+                <div class="chart-container">
+                    <canvas id="deathsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Climate Factors</div>
+                <div class="chart-container">
+                    <canvas id="climateChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Disease Distribution</div>
+                <div class="chart-container" style="height:320px;">
+                    <canvas id="diseasePieChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">State-wise Distribution</div>
+                <div class="chart-container">
+                    <canvas id="stateChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ML Tab: Disease Trend Analysis using ML___________________________________________________________________________________- -->
+
+        <div id="ml" class="tab-content" style="display:none;">
+        <div class="card">
+            <div class="card-title">Predict Disease Risk for City-Month</div>
+            <form id="mlForm" class="alert-form">
+            <!-- Location & Time Section -->
+            <div class="ml-form-section">
+                <div class="ml-section-title">📍 Location & Time Information</div>
+                <div class="ml-form-row">
+                    <div class="ml-form-group">
+                        <label for="city" class="ml-label">City Name *</label>
+                        <div class="ml-field-description">Enter the name of the city (e.g., Mumbai, Delhi)</div>
+                        <input type="text" id="city" name="city" class="ml-input" placeholder="e.g., Mumbai" required>
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="year" class="ml-label">Year *</label>
+                        <div class="ml-field-description">Year for prediction (e.g., 2025)</div>
+                        <input type="number" id="year" name="year" class="ml-input" value="2025" min="2020" max="2030" required>
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="month" class="ml-label">Month *</label>
+                        <div class="ml-field-description">Month number (1-12)</div>
+                        <input type="number" id="month" name="mon" class="ml-input" value="7" min="1" max="12" required>
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="week_num" class="ml-label">Week Number</label>
+                        <div class="ml-field-description">Week of the year (1-52)</div>
+                        <input type="number" id="week_num" name="week_num" class="ml-input" value="28" min="1" max="52">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historical Data Section -->
+            <div class="ml-form-section">
+                <div class="ml-section-title">📊 Historical Disease Data</div>
+                <div class="ml-form-row">
+                    <div class="ml-form-group">
+                        <label for="cases" class="ml-label">Past Cases</label>
+                        <div class="ml-field-description">Number of previous disease cases in the area</div>
+                        <input type="number" id="cases" name="Cases" class="ml-input" value="0" min="0">
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="deaths" class="ml-label">Deaths</label>
+                        <div class="ml-field-description">Number of deaths from the disease</div>
+                        <input type="number" id="deaths" name="Deaths" class="ml-input" value="0" min="0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Environmental Factors Section -->
+            <div class="ml-form-section">
+                <div class="ml-section-title">🌡️ Environmental Conditions</div>
+                <div class="ml-form-row">
+                    <div class="ml-form-group">
+                        <label for="temp" class="ml-label">Temperature (°C)</label>
+                        <div class="ml-field-description">Average temperature in Celsius</div>
+                        <input type="number" id="temp" name="Temp_C" class="ml-input" value="30" step="0.1" min="-10" max="50">
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="precipitation" class="ml-label">Precipitation (mm)</label>
+                        <div class="ml-field-description">Rainfall amount in millimeters</div>
+                        <input type="number" id="precipitation" name="preci" class="ml-input" value="5.0" step="0.1" min="0">
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="lai" class="ml-label">LAI (Leaf Area Index)</label>
+                        <div class="ml-field-description">Vegetation density measure (0-10)</div>
+                        <input type="number" id="lai" name="LAI" class="ml-input" value="8" step="0.1" min="0" max="10">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Geographic Coordinates Section -->
+            <div class="ml-form-section">
+                <div class="ml-section-title">🗺️ Geographic Coordinates</div>
+                <div class="ml-form-row">
+                    <div class="ml-form-group">
+                        <label for="latitude" class="ml-label">Latitude</label>
+                        <div class="ml-field-description">Geographic latitude (-90 to 90)</div>
+                        <input type="number" id="latitude" name="Latitude" class="ml-input" value="19.1" step="0.01" min="-90" max="90">
+                    </div>
+                    <div class="ml-form-group">
+                        <label for="longitude" class="ml-label">Longitude</label>
+                        <div class="ml-field-description">Geographic longitude (-180 to 180)</div>
+                        <input type="number" id="longitude" name="Longitude" class="ml-input" value="72.8" step="0.01" min="-180" max="180">
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="ml-btn">🔍 Predict Disease Risk</button>
+       
+            </form>
+            <div class="disease-info" id="mlResult" style="display:none;"></div>
+        </div>
+        </div>
+
+        <div id="ml" class="tab-content">
+        <div class="card">
+            <div class="card-title">Predict Disease Risk for City-Month</div>
+            <form id="mlForm" class="alert-form">
+                <input type="text" name="city" placeholder="City" required>
+                <input type="number" name="year" value="2025" placeholder="Year" required>
+                <input type="number" name="mon" value="7" placeholder="Month" required>
+                <input type="number" name="Cases" value="0" placeholder="Past Cases">
+                <input type="number" name="Deaths" value="0" placeholder="Deaths">
+                <input type="number" step="0.1" name="preci" value="5.0" placeholder="Precipitation (mm)">
+                <input type="number" step="0.1" name="LAI" value="8" placeholder="LAI">
+                <input type="number" step="0.1" name="Temp_C" value="30" placeholder="Temperature (°C)">
+                <input type="number" step="0.01" name="Latitude" value="19.1" placeholder="Latitude">
+                <input type="number" step="0.01" name="Longitude" value="72.8" placeholder="Longitude">
+                <input type="number" name="week_num" value="28" placeholder="Week Number">
+                <button class="nav-tab" onclick="showTab(event,'ml')">Disease Trend Analysis using ML</button>
+            </form>
+
+            <div class="disease-info" id="mlResult" style="display:none;"></div>
+        </div>
+    </div>
+
+
+
+    <!-- Trends Analysis Tab -->
+    <div id="trends" class="tab-content">
+        <div class="controls">
+            <div class="control-group">
+                <label>Analysis Type:</label>
+                <select id="trendType">
+                    <option value="state">State-wise Trends</option>
+                    <option value="city">City-wise Trends</option>
+                    <option value="year">Year-wise Trends</option>
+                    <option value="disease">Disease-wise Trends</option>
+                    <option value="comparison">Comparative Analysis</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Select Entity:</label>
+                <select id="entitySelect">
+                    <option value="all">All</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Disease Filter:</label>
+                <select id="trendDiseaseFilter">
+                    <option value="all">All Diseases</option>
+                </select>
+            </div>
+            <button class="btn" onclick="updateTrends()">Analyze Trends</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-title">Trend Analysis</div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Growth Rate Analysis</div>
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Seasonal Pattern Analysis</div>
+            <div class="chart-container">
+                <canvas id="seasonalChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Geographic Analysis Tab -->
+    <div id="geographic" class="tab-content">
+        <div class="controls">
+            <div class="control-group">
+                <label>Disease Filter:</label>
+                <select id="geoDiseaseFilter">
+                    <option value="all">All Diseases</option>
+                </select>
+            </div>
+            <button class="btn" onclick="updateGeographic()">Update Geographic View</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-title">Geographic Distribution</div>
+                <div class="map-container" id="geoMap">
+                    <div id="geoScatter" style="width:100%;height:100%;"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">3D Climate-Disease Correlation</div>
+                <div class="chart-container" id="3dPlot"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Hotspot Analysis</div>
+            <div class="chart-container">
+                <canvas id="hotspotChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hospital Data Tab -->
+    <div id="hospitals" class="tab-content">
+        <div class="controls">
+            <div class="control-group">
+                <label>Search by City:</label>
+                <input type="text" id="hospitalCitySearch" placeholder="Enter city name">
+            </div>
+            <div class="control-group">
+                <label>Year:</label>
+                <select id="hospitalYearSelect">
+                    <option value="">Select Year</option>
+                </select>
+            </div>
+            <button class="btn" onclick="searchHospitalData()">Search Records</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-title">Disease Cases by City & Year</div>
+                <div id="hospitalSearchResults">
+                    <p>Enter city and year to view disease records</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Overall Disease Trend</div>
+                <div class="chart-container">
+                    <canvas id="hospitalTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">City Comparison</div>
+            <div class="chart-container">
+                <canvas id="cityComparisonChart"></canvas>
+            </div>
+        </div>
+
+        <div class="hospital-grid" id="hospitalList">
+            <!-- Hospital data will be populated here -->
+        </div>
+    </div>
+
+    <!-- Reports & Downloads Tab -->
+    <div id="reports" class="tab-content">
+        <div class="download-section">
+            <h3>Generate and Download Reports</h3>
+            <p>Create comprehensive reports based on your selected filters</p>
+            
+            <div class="controls" style="justify-content: center; margin: 2rem 0;">
+                <div class="control-group">
+                    <label>State/UT:</label>
+                    <select id="reportStateSelect">
+                        <option value="all">All States</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>City:</label>
+                    <select id="reportCitySelect">
+                        <option value="all">All Cities</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Year:</label>
+                    <select id="reportYearSelect">
+                        <option value="all">All Years</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Disease:</label>
+                    <select id="reportDiseaseSelect">
+                        <option value="all">All Diseases</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="download-buttons">
+                <button class="btn btn-success" onclick="generateReport('excel')">
+                    📊 Download Excel Report
+                </button>
+                <button class="btn btn-info" onclick="generateReport('image')">
+                    📈 Download Chart Report (PNG)
+                </button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Report Preview</div>
+            <div id="reportPreview">
+                <p>Select filters and generate a report to see preview</p>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="card">
+                <div class="card-title">Report Summary Statistics</div>
+                <div class="stats-grid" style="margin: 0;">
+                    <div class="stat-card" style="background: linear-gradient(45deg, #667eea, #764ba2);">
+                        <div class="stat-number" id="reportTotalCases">0</div>
+                        <div class="stat-label">Total Cases</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(45deg, #f093fb, #f5576c);">
+                        <div class="stat-number" id="reportTotalDeaths">0</div>
+                        <div class="stat-label">Total Deaths</div>
+                    </div>
+                    <div class="stat-card" style="background: linear-gradient(45deg, #4ecdc4, #44a08d);">
+                        <div class="stat-number" id="reportDataPoints">0</div>
+                        <div class="stat-label">Data Points</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Top Affected Areas</div>
+                <div class="chart-container">
+                    <canvas id="reportChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts & Safety Tab -->
+    <div id="alerts" class="tab-content">
+        <div class="disease-info">
+            <h3>Public Awareness & Safety Information</h3>
+            <div id="diseaseInfoContent">
+                <p>Select a disease type to view safety guidelines and prevention measures.</p>
+            </div>
+            
+            <div class="controls" style="margin-top: 2rem;">
+                <div class="control-group">
+                    <label>Select Disease:</label>
+                    <select id="safetyDiseaseSelect">
+                        <option value="general">General Guidelines</option>
+                        <option value="dengue">Dengue</option>
+                        <option value="malaria">Malaria</option>
+                        <option value="chikungunya">Chikungunya</option>
+                        <option value="typhoid">Typhoid</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="showDiseaseInfo()">View Information</button>
+            </div>
+
+            <div class="safety-tips" id="safetyTips">
+                <!-- Safety tips will be populated here -->
+            </div>
+        </div>
+
+        <div class="alert-section">
+            <h3>Disease Outbreak Alert System</h3>
+            <p>Report suspected disease outbreaks and send alerts to nearest medical centers</p>
+            
+            <form class="alert-form" id="alertForm" onsubmit="submitAlert(event)">
+                <input id="alertName" type="text" placeholder="Reporter Name" required>
+                <input id="alertEmail" type="email" placeholder="Email Address" required>
+                <input id="alertPhone" type="tel" placeholder="Phone Number" required>
+                <input id="alertLocation" type="text" placeholder="Location/City" required>
+                <select id="alertDisease" required>
+                    <option value="">Select Disease Type</option>
+                    <option value="dengue">Dengue</option>
+                    <option value="malaria">Malaria</option>
+                    <option value="chikungunya">Chikungunya</option>
+                    <option value="typhoid">Typhoid</option>
+                    <option value="other">Other</option>
+                </select>
+                <input id="alertCases" type="number" placeholder="Number of Cases" required min="1">
+                <textarea id="alertDetails" placeholder="Additional Details" rows="4"></textarea>
+                <button type="submit" class="btn" style="grid-column: 1 / -1;">Submit Alert</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="notification" class="notification"></div>
+
+<script>
+    // Minimal fallback sample data if backend calls fail
+    const fallbackData = {
+        months: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        cases: [120,134,145,178,189,156,143,167,182,195,203,189],
+        deaths: [12,15,18,22,19,16,14,17,20,23,25,21],
+        temperature: [298,301,305,309,312,315,313,311,308,304,300,299],
+        precipitation: [2.1,1.8,2.5,3.2,4.1,8.5,12.3,11.7,8.9,4.2,2.8,2.0],
+        states: ['Maharashtra','Karnataka','Tamil Nadu','Gujarat','Rajasthan'],
+        stateCases: [450,380,320,290,210]
+    };
+
+    let metadata = null;
+    let currentCharts = {};
+
+    // Utility functions
+    async function getJSON(url) {
+        try {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            console.error('Fetch error', url, err);
+            return null;
+        }
+    }
+
+    function showNotification(message, type = 'success') {
+        const notification = document.getElementById('notification');
+        notification.textContent = message;
+        notification.className = `notification ${type}`;
+        notification.classList.add('show');
+        
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
+    }
+
+    function downloadFile(content, filename, contentType) {
+        const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))], 
+            { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+
+    // Add array of protected tabs
+const protectedTabs = ['reports', 'ml', 'alerts'];
+
+async function showTab(evt, tabName) {
+    // Check if tab requires authentication
+    if (protectedTabs.includes(tabName)) {
+        const isAuthenticated = await checkAuthStatus();
+        if (!isAuthenticated) {
+            showNotification('Please login to access this feature', 'error');
+            // Redirect to login page
+            window.location.href = '/login?redirect=' + tabName;
+            return;
+        }
+    }
+
+    // Original tab switching code
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(tab => tab.classList.remove('active'));
+    const tabs = document.querySelectorAll('.nav-tab');
+    tabs.forEach(t => t.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    evt.currentTarget.classList.add('active');
+
+    if (tabName === 'overview') initializeOverview();
+    else if (tabName === 'trends') initializeTrends();
+    else if (tabName === 'geographic') initializeGeographic();
+    else if (tabName === 'hospitals') initializeHospitals();
+    else if (tabName === 'reports') initializeReports();
+    else if (tabName === 'ml') initializeML();
+    else if (tabName === 'alerts') initializeAlerts();
+}
+
+// Check authentication status without redirecting
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/auth/profile');
+        return response.ok;
+    } catch (error) {
+        return false;
+    }
+}
+
+    // Tab switching
+    function showTab(evt, tabName) {
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabContents.forEach(tab => tab.classList.remove('active'));
+        const tabs = document.querySelectorAll('.nav-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        document.getElementById(tabName).classList.add('active');
+        evt.currentTarget.classList.add('active');
+
+        if (tabName === 'overview') initializeOverview();
+        else if (tabName === 'trends') initializeTrends();
+        else if (tabName === 'geographic') initializeGeographic();
+        else if (tabName === 'hospitals') initializeHospitals();
+        else if (tabName === 'reports') initializeReports();
+        else if (tabName === 'alerts') initializeAlerts();
+    }
+
+    // Initialize metadata and dropdowns
+    async function loadMetadata() {
+        const meta = await getJSON('/api/data/metadata');
+        if (meta) {
+            metadata = meta;
+            console.log('Loaded metadata:', metadata);
+            
+            // Debug: Also fetch debug info to see what's in the data
+            const debug = await getJSON('/api/data/debug');
+            if (debug) {
+                console.log('Debug info:', debug);
+                console.log('Disease column found:', debug.disease_column);
+                console.log('Diseases available:', debug.diseases);
+                if (debug.disease_value_counts) {
+                    console.log('Disease counts in data:', debug.disease_value_counts);
+                }
+            }
+        } else {
+            metadata = {
+                total_records: 0,
+                date_range: { min: null, max: null },
+                states: [],
+                cities: [],
+                years: [],
+                diseases: [],
+                disease_column: null,
+                city_map: {}
+            };
+        }
+        populateDropdowns();
+    }
+
+    function populateDropdowns() {
+        const dropdowns = [
+            'stateSelect', 'citySelect', 'yearSelect', 'diseaseSelect',
+            'reportStateSelect', 'reportCitySelect', 'reportYearSelect', 'reportDiseaseSelect',
+            'trendDiseaseFilter', 'geoDiseaseFilter'
+        ];
+
+        dropdowns.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                // Clear existing options except default
+                const defaultOption = element.querySelector('option[value="all"], option[value=""]');
+                element.innerHTML = '';
+                if (defaultOption) {
+                    element.appendChild(defaultOption.cloneNode(true));
+                }
+            }
+        });
+
+        // Populate states
+        const stateSelects = ['stateSelect', 'reportStateSelect'];
+        stateSelects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select && metadata.states) {
+                metadata.states.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s; opt.textContent = s;
+                    select.appendChild(opt);
+                });
+            }
+        });
+
+        // Populate years
+        const yearSelects = ['yearSelect', 'reportYearSelect', 'hospitalYearSelect'];
+        yearSelects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select && metadata.years) {
+                metadata.years.forEach(y => {
+                    const opt = document.createElement('option');
+                    opt.value = y; opt.textContent = y;
+                    select.appendChild(opt);
+                });
+            }
+        });
+
+        // Populate diseases - Only show diseases that actually exist in the data
+        const diseaseSelects = ['diseaseSelect', 'reportDiseaseSelect', 'trendDiseaseFilter', 'geoDiseaseFilter'];
+        diseaseSelects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                // Check if we have real disease data
+                if (metadata.diseases && metadata.diseases.length > 0 && metadata.disease_column) {
+                    console.log(`Populating ${id} with diseases:`, metadata.diseases);
+                    metadata.diseases.forEach(d => {
+                        const opt = document.createElement('option');
+                        opt.value = d; 
+                        opt.textContent = d;
+                        select.appendChild(opt);
+                    });
+                } else {
+                    console.log(`No disease data available for ${id}`);
+                    // If no disease column found, hide the disease filter or disable it
+                    const controlGroup = select.closest('.control-group');
+                    if (controlGroup) {
+                        controlGroup.style.display = 'none';
+                    }
+                }
+            }
+        });
+
+        // Setup city dropdown updates
+        setupCityDropdownUpdates();
+        
+        // Show/hide disease-related UI elements based on data availability
+        updateDiseaseUIVisibility();
+    }
+
+    function updateDiseaseUIVisibility() {
+        const hasDisease = metadata.diseases && metadata.diseases.length > 0 && metadata.disease_column;
+        
+        // Show or hide disease-related controls
+        const diseaseControls = document.querySelectorAll('.control-group:has(select[id*="disease" i])');
+        diseaseControls.forEach(control => {
+            control.style.display = hasDisease ? 'flex' : 'none';
+        });
+        
+        // Update trend type dropdown to include/exclude disease option
+        const trendTypeSelect = document.getElementById('trendType');
+        if (trendTypeSelect) {
+            const diseaseOption = trendTypeSelect.querySelector('option[value="disease"]');
+            if (diseaseOption) {
+                diseaseOption.style.display = hasDisease ? 'block' : 'none';
+            }
+        }
+        
+        // Show a message if no disease data is found
+        if (!hasDisease) {
+            showNotification('No disease column found in your data. Disease filtering is disabled.', 'info');
+        }
+    }
+
+    function setupCityDropdownUpdates() {
+        const stateSelects = ['stateSelect', 'reportStateSelect'];
+        const citySelects = ['citySelect', 'reportCitySelect'];
+
+        stateSelects.forEach((stateId, index) => {
+            const stateSelect = document.getElementById(stateId);
+            const citySelect = document.getElementById(citySelects[index]);
+            
+            if (stateSelect && citySelect) {
+                stateSelect.addEventListener('change', (e) => {
+                    updateCityOptions(e.target.value, citySelect);
+                });
+                // Initialize cities for current state
+                updateCityOptions(stateSelect.value || 'all', citySelect);
+            }
+        });
+    }
+
+    function updateCityOptions(selectedState, citySelect) {
+        // Remove current non-default options
+        citySelect.querySelectorAll('option:not([value="all"])').forEach(n => n.remove());
+
+        let citiesToShow = [];
+        if (!metadata) return;
+
+        if (selectedState && selectedState !== 'all' && metadata.city_map && metadata.city_map[selectedState]) {
+            citiesToShow = metadata.city_map[selectedState];
+        } else {
+            citiesToShow = metadata.cities || [];
+        }
+
+        citiesToShow.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c; opt.textContent = c;
+            citySelect.appendChild(opt);
+        });
+
+        citySelect.value = 'all';
+    }
+
+    // Overview functions
+    async function initializeOverview() {
+        if (!metadata) await loadMetadata();
+        updateOverview();
+    }
+
+    async function updateOverview() {
+        showLoading();
+        const state = document.getElementById('stateSelect').value || 'all';
+        const city = document.getElementById('citySelect').value || 'all';
+        const year = document.getElementById('yearSelect').value || 'all';
+        const disease = document.getElementById('diseaseSelect').value || 'all';
+
+        const params = `?state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}&year=${encodeURIComponent(year)}&disease=${encodeURIComponent(disease)}`;
+
+        // Fetch overview stats
+        const overview = await getJSON('/api/data/overview' + params);
+        if (overview && !overview.error) {
+            document.getElementById('totalCases').textContent = overview.total_cases ?? 0;
+            document.getElementById('totalDeaths').textContent = overview.total_deaths ?? 0;
+            document.getElementById('affectedStates').textContent = overview.affected_states ?? 0;
+            document.getElementById('avgTemp').textContent = overview.avg_temp ?? 0;
+        } else {
+            // fallback stats
+            const totalCases = fallbackData.cases.reduce((a,b)=>a+b,0);
+            const totalDeaths = fallbackData.deaths.reduce((a,b)=>a+b,0);
+            document.getElementById('totalCases').textContent = totalCases;
+            document.getElementById('totalDeaths').textContent = totalDeaths;
+            document.getElementById('affectedStates').textContent = fallbackData.states.length;
+            document.getElementById('avgTemp').textContent = Math.round(fallbackData.temperature.reduce((a,b)=>a+b,0)/fallbackData.temperature.length);
+        }
+
+        // Fetch timeseries
+        const ts = await getJSON('/api/data/timeseries' + params);
+        if (ts && !ts.error && Array.isArray(ts.labels) && ts.labels.length > 0) {
+            createCasesChart(ts.labels, ts.cases);
+            createDeathsChart(ts.labels, ts.deaths);
+            createClimateChart(ts.labels, ts.temperature, ts.precipitation);
+        } else {
+            createCasesChart(fallbackData.months, fallbackData.cases);
+            createDeathsChart(fallbackData.months, fallbackData.deaths);
+            createClimateChart(fallbackData.months, fallbackData.temperature, fallbackData.precipitation);
+        }
+
+        // State distribution
+        const stateTrend = await getJSON('/api/data/trends?type=state&entity=all');
+        if (stateTrend && !stateTrend.error && Array.isArray(stateTrend.labels)) {
+            createStateChart(stateTrend.labels, stateTrend.cases);
+        } else {
+            createStateChart(fallbackData.states, fallbackData.stateCases);
+        }
+
+        // Disease breakdown
+        const breakdown = await getJSON('/api/data/disease_breakdown' + params);
+        if (breakdown && !breakdown.error && Array.isArray(breakdown.labels) && breakdown.labels.length > 0) {
+            createDiseasePieChart(breakdown.labels, breakdown.values);
+        } else {
+            // If no disease data is available, show a message instead of mock data
+            const diseaseChartContainer = document.querySelector('#diseasePieChart').parentElement;
+            if (!metadata.disease_column || !metadata.diseases || metadata.diseases.length === 0) {
+                diseaseChartContainer.innerHTML = `
+                    <div class="card-title">Disease Distribution</div>
+                    <div style="height:320px; display:flex; align-items:center; justify-content:center; color:#666; text-align:center;">
+                        <div>
+                            <p>No disease data available in your CSV</p>
+                            <p style="font-size:0.9rem; margin-top:10px;">Add a column named 'disease', 'disease_type', or similar to enable disease analysis</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Create empty chart
+                createDiseasePieChart(['No Data'], [1]);
+            }
+        }
+
+        hideLoading();
+    }
+
+    // Chart creation functions
+    function createCasesChart(labels, data) {
+        const ctx = document.getElementById('casesChart').getContext('2d');
+        if (currentCharts.cases) currentCharts.cases.destroy();
+        currentCharts.cases = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Cases', data, borderColor:'#667eea', backgroundColor:'rgba(102,126,234,0.1)', borderWidth:3, fill:true, tension:0.4 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+        });
+    }
+
+    function createDeathsChart(labels, data) {
+        const ctx = document.getElementById('deathsChart').getContext('2d');
+        if (currentCharts.deaths) currentCharts.deaths.destroy();
+        currentCharts.deaths = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [{ label: 'Deaths', data, borderColor:'#ff6b6b', backgroundColor:'rgba(255,107,107,0.1)', borderWidth:3, fill:true, tension:0.4 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+        });
+    }
+
+    function createClimateChart(labels, temperature, precipitation) {
+        const ctx = document.getElementById('climateChart').getContext('2d');
+        if (currentCharts.climate) currentCharts.climate.destroy();
+        currentCharts.climate = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Temperature (K)',
+                    data: temperature,
+                    borderColor: '#ff9f43',
+                    backgroundColor: 'rgba(255,159,67,0.1)',
+                    borderWidth: 2,
+                    yAxisID: 'y'
+                }, {
+                    label: 'Precipitation (mm)',
+                    data: precipitation,
+                    borderColor: '#54a0ff',
+                    backgroundColor: 'rgba(84,160,255,0.1)',
+                    borderWidth: 2,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                scales: {
+                    y: { type: 'linear', display: true, position: 'left' },
+                    y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
+                }
+            }
+        });
+    }
+
+    function createStateChart(labels, values) {
+        const ctx = document.getElementById('stateChart').getContext('2d');
+        if (currentCharts.state) currentCharts.state.destroy();
+        currentCharts.state = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels, datasets: [{ data: values, backgroundColor: ['#667eea','#764ba2','#f093fb','#f5576c','#4ecdc4'] }] },
+            options: { responsive:true, maintainAspectRatio:false }
+        });
+    }
+
+    function createDiseasePieChart(labels, values) {
+        const ctx = document.getElementById('diseasePieChart').getContext('2d');
+        if (currentCharts.diseasePie) currentCharts.diseasePie.destroy();
+
+        const palette = ['#ff6b6b','#ff9f43','#feca57','#4ecdc4','#54a0ff','#5f27cd','#764ba2','#f093fb','#9b59b6','#e67e22'];
+        const bg = labels.map((_, i) => palette[i % palette.length]);
+
+        currentCharts.diseasePie = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: bg,
+                    borderColor: '#fff',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const v = ctx.parsed;
+                                const total = ctx.chart._metasets ? ctx.chart._metasets[0].total : ctx.dataset.data.reduce((a,b)=>a+b,0);
+                                const percent = total ? ((v / total) * 100).toFixed(1) : '0';
+                                return `${ctx.label}: ${v} (${percent}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Trends functions
+    async function initializeTrends() {
+        if (!metadata) await loadMetadata();
+        populateEntitySelect();
+        updateTrends();
+    }
+
+    function populateEntitySelect() {
+        const trendType = document.getElementById('trendType').value;
+        const entitySelect = document.getElementById('entitySelect');
+        
+        entitySelect.innerHTML = '<option value="all">All</option>';
+        
+        let options = [];
+        if (trendType === 'state' && metadata.states) {
+            options = metadata.states;
+        } else if (trendType === 'city' && metadata.cities) {
+            options = metadata.cities.slice(0, 20); // Limit for performance
+        } else if (trendType === 'disease' && metadata.diseases) {
+            options = metadata.diseases;
+        }
+        
+        options.forEach(option => {
+            const opt = document.createElement('option');
+            opt.value = option;
+            opt.textContent = option;
+            entitySelect.appendChild(opt);
+        });
+    }
+
+    // Update entity select when trend type changes
+    document.getElementById('trendType')?.addEventListener('change', populateEntitySelect);
+
+    async function updateTrends() {
+        const trendType = document.getElementById('trendType').value;
+        const entity = document.getElementById('entitySelect').value || 'all';
+        const disease = document.getElementById('trendDiseaseFilter').value || 'all';
+
+        const url = `/api/data/trends?type=${encodeURIComponent(trendType)}&entity=${encodeURIComponent(entity)}&disease=${encodeURIComponent(disease)}`;
+        const data = await getJSON(url);
+        
+        if (data && !data.error) {
+            createTrendChart(data.labels, data.cases);
+            createGrowthChart(data.labels, data.growth_rates);
+        } else {
+            createTrendChart(fallbackData.states, fallbackData.stateCases);
+            const growth = fallbackData.cases.map((v,i)=>i===0?0:((v - fallbackData.cases[i-1])/fallbackData.cases[i-1]*100).toFixed(2));
+            createGrowthChart(fallbackData.months, growth);
+        }
+
+        const seasonal = await getJSON(`/api/data/seasonal?disease=${encodeURIComponent(disease)}`);
+        if (seasonal && !seasonal.error) {
+            createSeasonalChart(seasonal.seasons, seasonal.avg_cases);
+        } else {
+            const seasons = ['Winter','Summer','Monsoon','Post-Monsoon'];
+            const seasonalData = [50,70,90,60];
+            createSeasonalChart(seasons, seasonalData);
+        }
+    }
+
+    function createTrendChart(labels, data) {
+        const ctx = document.getElementById('trendChart').getContext('2d');
+        if (currentCharts.trend) currentCharts.trend.destroy();
+        currentCharts.trend = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label:'Cases', data, backgroundColor:'rgba(102,126,234,0.8)' }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+        });
+    }
+
+    function createGrowthChart(labels, data) {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        if (currentCharts.growth) currentCharts.growth.destroy();
+        currentCharts.growth = new Chart(ctx, {
+            type: 'line',
+            data: { labels, datasets: [{ label:'Growth Rate (%)', data, borderColor:'#ee5a24', backgroundColor:'rgba(238,90,36,0.1)', borderWidth:3, fill:true, tension:0.4 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}} }
+        });
+    }
+
+    function createSeasonalChart(labels, data) {
+        const ctx = document.getElementById('seasonalChart').getContext('2d');
+        if (currentCharts.seasonal) currentCharts.seasonal.destroy();
+        currentCharts.seasonal = new Chart(ctx, {
+            type: 'radar',
+            data: { labels, datasets: [{ label:'Average Cases', data, borderColor:'#5f27cd', backgroundColor:'rgba(95,39,205,0.2)', borderWidth:2 }] },
+            options: { responsive:true, maintainAspectRatio:false, scales:{ r:{ beginAtZero:true } } }
+        });
+    }
+
+    // Geographic functions
+    async function initializeGeographic() {
+        await updateGeographic();
+    }
+
+    async function updateGeographic() {
+        const state = document.getElementById('stateSelect')?.value || 'all';
+        const year = document.getElementById('yearSelect')?.value || 'all';
+        const disease = document.getElementById('geoDiseaseFilter')?.value || 'all';
+        
+        const url = `/api/data/geographic?state=${encodeURIComponent(state)}&year=${encodeURIComponent(year)}&disease=${encodeURIComponent(disease)}`;
+        const geo = await getJSON(url);
+        
+        if (geo && !geo.error && Array.isArray(geo.geographic_data) && geo.geographic_data.length > 0) {
+            create3DPlotFromGeo(geo['3d_data']);
+            createGeoScatter(geo.geographic_data);
+            createHotspotFromGeo(geo.geographic_data);
+        } else {
+            create3DPlot();
+            createHotspotFallback();
+        }
+    }
+
+    function create3DPlotFromGeo(data3d) {
+        const x = data3d.temperature;
+        const y = data3d.precipitation;
+        const z = data3d.cases;
+        const states = data3d.states;
+        const trace = {
+            x, y, z, text: states, mode: 'markers',
+            marker: { size: z.map(v=> Math.max(4, Math.log(v+1)*6)), color: z, colorscale: 'Viridis', opacity:0.8, colorbar:{title:'Cases'} },
+            type: 'scatter3d'
+        };
+        const layout = {
+            title: 'Cases vs Temperature vs Precipitation',
+            scene: { xaxis:{title:'Temperature'}, yaxis:{title:'Precipitation'}, zaxis:{title:'Cases'} },
+            margin: {l:0,r:0,b:0,t:30}
+        };
+        Plotly.newPlot('3dPlot', [trace], layout, {responsive:true});
+    }
+
+    function createGeoScatter(geoData) {
+        const lats = geoData.map(d=>d.lat);
+        const lngs = geoData.map(d=>d.lng);
+        const sizes = geoData.map(d=> Math.max(6, Math.log(d.cases+1)*6));
+        const texts = geoData.map(d=> `${d.state}: ${d.cases} cases`);
+        const trace = {
+            x: lngs, y: lats, text: texts, mode: 'markers',
+            marker: { size: sizes, color: geoData.map(d=>d.cases), colorscale:'Reds', showscale:true },
+            type: 'scatter'
+        };
+        const layout = { title: 'Geographic Distribution (Longitude vs Latitude)', xaxis:{title:'Longitude'}, yaxis:{title:'Latitude'}, margin:{t:30} };
+        Plotly.newPlot('geoScatter', [trace], layout, {responsive:true});
+    }
+
+    function createHotspotFromGeo(geoData) {
+        const ctx = document.getElementById('hotspotChart').getContext('2d');
+        if (currentCharts.hotspot) currentCharts.hotspot.destroy();
+        const dataset = geoData.map((d, index) => ({ x: d.lng, y: d.lat, r: Math.max(4, Math.log(d.cases+1)*8), state: d.state, cases: d.cases }));
+        currentCharts.hotspot = new Chart(ctx, {
+            type: 'bubble',
+            data: { datasets: [{ label:'Disease Hotspots', data: dataset, backgroundColor:'rgba(255,107,107,0.6)', borderColor:'#ff6b6b' }] },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                scales: { x:{ title:{display:true,text:'Longitude'}}, y:{ title:{display:true,text:'Latitude'} } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const d = ctx.raw;
+                                return `${d.state}: ${d.cases} cases`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Fallback 3D and hotspot
+    function create3DPlot() {
+        const x = fallbackData.temperature;
+        const y = fallbackData.precipitation;
+        const z = fallbackData.cases;
+        const trace = { x,y,z, mode:'markers', marker:{ size:z.map(v=>Math.max(6, Math.log(v+1)*6)), color: z, colorscale:'Viridis', opacity:0.8, colorbar:{title:'Cases'} }, type:'scatter3d' };
+        const layout = { title:'Cases vs Temperature vs Precipitation', scene:{ xaxis:{title:'Temperature (K)'}, yaxis:{title:'Precipitation (mm)'}, zaxis:{title:'Cases'} }, margin:{t:30} };
+        Plotly.newPlot('3dPlot', [trace], layout, {responsive:true});
+    }
+
+    function createHotspotFallback() {
+        const ctx = document.getElementById('hotspotChart').getContext('2d');
+        if (currentCharts.hotspot) currentCharts.hotspot.destroy();
+        currentCharts.hotspot = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Disease Hotspots',
+                    data: fallbackData.states.map((s,i)=>({ x: 70 + i*5, y: 15 + i*3, r: fallbackData.stateCases[i] / 10 })),
+                    backgroundColor: 'rgba(255, 107, 107, 0.6)',
+                    borderColor: '#ff6b6b', borderWidth:2
+                }]
+            },
+            options: {
+                responsive:true, maintainAspectRatio:false,
+                scales: { x:{ title:{display:true,text:'Longitude'}, min:68, max:98 }, y:{ title:{display:true,text:'Latitude'}, min:6, max:37 } },
+                plugins: { tooltip: { callbacks: { label: function(context) { const index = context.dataIndex; return `${fallbackData.states[index]}: ${fallbackData.stateCases[index]} cases`; } } } }
+            }
+        });
+    }
+
+    // Hospital functions
+    async function initializeHospitals() {
+        await loadHospitalList();
+        createHospitalTrendChart();
+        createCityComparisonChart();
+    }
+
+    async function loadHospitalList() {
+        const resp = await getJSON('/api/hospitals/list');
+        const listDiv = document.getElementById('hospitalList');
+        if (resp && resp.hospitals) {
+            listDiv.innerHTML = resp.hospitals.map(h => `
+                <div class="hospital-card">
+                    <div class="hospital-name">${h.name}</div>
+                    <div class="hospital-details">
+                        <p><strong>City:</strong> ${h.city}</p>
+                        <p><strong>Beds:</strong> ${h.beds}</p>
+                        <p><strong>Contact:</strong> ${h.contact}</p>
+                        <p><strong>Speciality:</strong> ${h.speciality}</p>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            populateHospitalDataFallback();
+        }
+    }
+
+    function populateHospitalDataFallback() {
+        const hospitalList = document.getElementById('hospitalList');
+        const hospitals = [
+            { name: 'City General Hospital', city: 'Mumbai', beds: 500, contact: '+91-22-1234-5678', speciality: 'Infectious Diseases' },
+            { name: 'Metro Medical Center', city: 'Delhi', beds: 750, contact: '+91-11-9876-5432', speciality: 'Emergency Care' },
+            { name: 'Regional Health Institute', city: 'Bangalore', beds: 400, contact: '+91-80-5555-1111', speciality: 'Tropical Diseases' },
+            { name: 'State Medical College', city: 'Chennai', beds: 600, contact: '+91-44-2222-3333', speciality: 'Public Health' },
+            { name: 'District Hospital', city: 'Pune', beds: 350, contact: '+91-20-7777-8888', speciality: 'General Medicine' }
+        ];
+        hospitalList.innerHTML = hospitals.map(hospital => `
+            <div class="hospital-card">
+                <div class="hospital-name">${hospital.name}</div>
+                <div class="hospital-details">
+                    <p><strong>City:</strong> ${hospital.city}</p>
+                    <p><strong>Beds:</strong> ${hospital.beds}</p>
+                    <p><strong>Contact:</strong> ${hospital.contact}</p>
+                    <p><strong>Speciality:</strong> ${hospital.speciality}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function searchHospitalData() {
+        const city = document.getElementById('hospitalCitySearch').value.trim();
+        const year = document.getElementById('hospitalYearSelect').value;
+
+        if (!city) {
+            showNotification('Please enter a city name', 'error');
+            return;
+        }
+        if (!year) {
+            showNotification('Please select a year', 'error');
+            return;
+        }
+
+        const url = `/api/hospitals/search?city=${encodeURIComponent(city)}&year=${encodeURIComponent(year)}`;
+        const res = await getJSON(url);
+        const resultsDiv = document.getElementById('hospitalSearchResults');
+
+        if (!res) {
+            resultsDiv.innerHTML = `<p style="color:#fff;">Network error or server error while fetching data</p>`;
+            return;
+        }
+
+        if (res.found) {
+            resultsDiv.innerHTML = `
+                <div style="background:#f8f9fa; padding:1.5rem; border-radius:10px; margin-top:1rem;">
+                    <h4 style="color:#4a5568; margin-bottom:1rem;">Disease Records for ${res.city} — Year ${res.year || year}</h4>
+                    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; margin-bottom:1rem;">
+                        <div style="background:white; padding:1rem; border-radius:8px; text-align:center;">
+                            <div style="font-size:1.5rem; font-weight:bold; color:#ff6b6b;">${res.total_cases}</div>
+                            <div style="font-size:.9rem; color:#666;">Total Cases (year)</div>
+                        </div>
+                        <div style="background:white; padding:1rem; border-radius:8px; text-align:center;">
+                            <div style="font-size:1.5rem; font-weight:bold; color:#feca57;">${res.total_deaths}</div>
+                            <div style="font-size:.9rem; color:#666;">Total Deaths (year)</div>
+                        </div>
+                    </div>
+                    <h5 style="margin:1rem 0; color:#4a5568;">Disease Breakdown:</h5>
+                    ${res.diseases && res.diseases.length ? res.diseases.map(d=>`<div style="display:flex;justify-content:space-between;padding:.5rem;background:white;margin-bottom:.5rem;border-radius:5px;"><span>${d.name}</span><span style="font-weight:bold;color:#667eea;">${d.cases} cases</span></div>`).join('') : '<p style="color:#666;">No disease breakdown available.</p>'}
+                </div>
+            `;
+        } else {
+            resultsDiv.innerHTML = `<p style="color:#fff;">No data found for ${city} in ${year}</p>`;
+        }
+    }
+
+    function createHospitalTrendChart() {
+        const ctx = document.getElementById('hospitalTrendChart').getContext('2d');
+        if (currentCharts.hospitalTrend) currentCharts.hospitalTrend.destroy();
+        currentCharts.hospitalTrend = new Chart(ctx, {
+            type: 'line',
+            data: { labels: fallbackData.months, datasets: [{ label: 'Hospital Admissions', data: fallbackData.cases.map(v=>Math.round(v*0.3)), borderColor:'#4ecdc4', backgroundColor:'rgba(78,205,196,0.1)', borderWidth:3, fill:true, tension:0.4 }] },
+            options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+        });
+    }
+
+    function createCityComparisonChart() {
+        const ctx = document.getElementById('cityComparisonChart').getContext('2d');
+        if (currentCharts.cityComparison) currentCharts.cityComparison.destroy();
+        const cities = ['Mumbai','Delhi','Bangalore','Chennai','Pune'];
+        const dengueData = cities.map(()=>Math.floor(Math.random()*50)+10);
+        const malariaData = cities.map(()=>Math.floor(Math.random()*30)+5);
+        const typhoidData = cities.map(()=>Math.floor(Math.random()*20)+3);
+        currentCharts.cityComparison = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: cities, datasets: [{ label:'Dengue', data:dengueData, backgroundColor:'rgba(255,107,107,0.8)' }, { label:'Malaria', data:malariaData, backgroundColor:'rgba(84,160,255,0.8)' }, { label:'Typhoid', data:typhoidData, backgroundColor:'rgba(254,202,87,0.8)' }] },
+            options: { responsive:true, maintainAspectRatio:false, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true } } }
+        });
+    }
+
+    // Reports functions
+    async function initializeReports() {
+        if (!metadata) await loadMetadata();
+        updateReportPreview();
+    }
+
+    async function updateReportPreview() {
+        const state = document.getElementById('reportStateSelect')?.value || 'all';
+        const city = document.getElementById('reportCitySelect')?.value || 'all';
+        const year = document.getElementById('reportYearSelect')?.value || 'all';
+        const disease = document.getElementById('reportDiseaseSelect')?.value || 'all';
+
+        const params = `?state=${encodeURIComponent(state)}&city=${encodeURIComponent(city)}&year=${encodeURIComponent(year)}&disease=${encodeURIComponent(disease)}`;
+
+        // Update preview statistics
+        const overview = await getJSON('/api/data/overview' + params);
+        if (overview && !overview.error) {
+            document.getElementById('reportTotalCases').textContent = overview.total_cases ?? 0;
+            document.getElementById('reportTotalDeaths').textContent = overview.total_deaths ?? 0;
+            document.getElementById('reportDataPoints').textContent = overview.data_points ?? 0;
+        }
+
+        // Create preview chart
+        const stateTrend = await getJSON('/api/data/trends?type=state&entity=all' + (disease !== 'all' ? `&disease=${encodeURIComponent(disease)}` : ''));
+        if (stateTrend && !stateTrend.error && Array.isArray(stateTrend.labels)) {
+            createReportChart(stateTrend.labels, stateTrend.cases);
+        }
+    }
+
+    function createReportChart(labels, data) {
+        const ctx = document.getElementById('reportChart').getContext('2d');
+        if (currentCharts.report) currentCharts.report.destroy();
+        
+        // Show top 10 for better visualization
+        const sortedData = labels.map((label, i) => ({ label, value: data[i] }))
+                                 .sort((a, b) => b.value - a.value)
+                                 .slice(0, 10);
+        
+        currentCharts.report = new Chart(ctx, {
+            type: 'bar',
+            data: { 
+                labels: sortedData.map(d => d.label), 
+                datasets: [{ 
+                    label: 'Cases', 
+                    data: sortedData.map(d => d.value), 
+                    backgroundColor: 'rgba(102,126,234,0.8)',
+                    borderColor: '#667eea',
+                    borderWidth: 1
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                plugins: { legend: { display: false } }, 
+                scales: { y: { beginAtZero: true } } 
+            }
+        });
+    }
+
+    async function generateReport(type) {
+        const state = document.getElementById('reportStateSelect')?.value || 'all';
+        const city = document.getElementById('reportCitySelect')?.value || 'all';
+        const year = document.getElementById('reportYearSelect')?.value || 'all';
+        const disease = document.getElementById('reportDiseaseSelect')?.value || 'all';
+
+        const filters = { state, city, year, disease };
+
+        showLoading();
+        showNotification(`Generating ${type} report...`, 'success');
+
+        try {
+            const response = await fetch('/api/reports/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type, filters })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                downloadFile(result.file_content, result.filename, result.content_type);
+                showNotification(`${type.toUpperCase()} report downloaded successfully!`, 'success');
+            } else {
+                showNotification(result.error || 'Failed to generate report', 'error');
+            }
+        } catch (error) {
+            console.error('Report generation error:', error);
+            showNotification('Network error while generating report', 'error');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // Update report preview when filters change
+    ['reportStateSelect', 'reportCitySelect', 'reportYearSelect', 'reportDiseaseSelect'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', updateReportPreview);
+    });
+
+    // Alerts functions
+    function initializeAlerts() { 
+        showDiseaseInfo(); 
+    }
+
+    const diseaseInfo = {
+        dengue: { title:"Dengue Fever", description:"Dengue is a mosquito-borne viral infection.", symptoms:["High fever","Severe headache","Eye pain","Muscle aches","Nausea","Skin rash"], prevention:["Remove standing water","Use mosquito nets","Wear protective clothing","Use repellents"], treatment:"Supportive care with proper hydration" },
+        malaria: { title:"Malaria", description:"Malaria is a life-threatening disease caused by parasites transmitted through mosquito bites.", symptoms:["Fever and chills","Headache","Muscle aches","Fatigue","Nausea","Vomiting"], prevention:["Use bed nets","Take antimalarial drugs","Eliminate breeding sites","Use repellents"], treatment:"Antimalarial medications prescribed by healthcare professionals" },
+        chikungunya: { title:"Chikungunya", description:"Chikungunya is a viral disease transmitted by infected mosquitoes.", symptoms:["Sudden fever","Joint pain","Headache","Muscle pain","Joint swelling","Rash"], prevention:["Prevent mosquito breeding","Use protective measures","Community awareness","Vector control"], treatment:"Supportive care with pain management and rest" },
+        typhoid: { title:"Typhoid Fever", description:"Typhoid is a bacterial infection spread through contaminated food and water.", symptoms:["Prolonged fever","Headache","Weakness","Abdominal pain","Constipation","Rash"], prevention:["Safe drinking water","Good hygiene","Vaccination","Proper sanitation"], treatment:"Antibiotics and supportive care" },
+        general: { title:"General Health Guidelines", description:"Basic preventive measures for disease prevention and health maintenance.", symptoms:["Maintain awareness of common symptoms","Regular health checkups"], prevention:["Personal hygiene","Safe food practices","Clean environment","Regular exercise"], treatment:"Consult healthcare professionals for proper diagnosis and treatment" }
+    };
+
+    function showDiseaseInfo() {
+        const selected = document.getElementById('safetyDiseaseSelect').value || 'general';
+        const info = diseaseInfo[selected] || diseaseInfo.general;
+        document.getElementById('diseaseInfoContent').innerHTML = `
+            <div style="margin-bottom:2rem;">
+                <h4 style="color:white;font-size:1.3rem;margin-bottom:1rem;">${info.title}</h4>
+                <p style="margin-bottom:1.5rem;line-height:1.6;">${info.description}</p>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit,minmax(300px,1fr)); gap:1.5rem;">
+                    <div>
+                        <h5 style="color:#fff;margin-bottom:.5rem;">Common Symptoms:</h5>
+                        <ul style="list-style:none;padding:0;">
+                            ${info.symptoms.map(s=>`<li style="padding:.25rem 0;color:rgba(255,255,255,0.9);">• ${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div>
+                        <h5 style="color:#fff;margin-bottom:.5rem;">Prevention Measures:</h5>
+                        <ul style="list-style:none;padding:0;">
+                            ${info.prevention.map(p=>`<li style="padding:.25rem 0;color:rgba(255,255,255,0.9);">• ${p}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+                <div style="margin-top:1.5rem;padding:1rem;background:rgba(255,255,255,0.1);border-radius:10px;">
+                    <h5 style="color:#fff;margin-bottom:.5rem;">Treatment:</h5>
+                    <p style="color:rgba(255,255,255,0.9);margin:0;">${info.treatment}</p>
+                </div>
+            </div>
+        `;
+        const generalTips = [
+            { title:"Emergency Contacts", content:"Keep emergency medical numbers handy. National Health Helpline: 1075" },
+            { title:"Early Detection", content:"Report symptoms early to prevent complications and spread" },
+            { title:"Hygiene Practices", content:"Maintain personal hygiene and clean surroundings" },
+            { title:"Community Awareness", content:"Educate family and neighbors about prevention measures" }
+        ];
+        document.getElementById('safetyTips').innerHTML = generalTips.map(t=>`
+            <div class="tip-card">
+                <h5 style="color:white;margin-bottom:.5rem;">${t.title}</h5>
+                <p style="color:rgba(255,255,255,0.9);margin:0;font-size:.9rem;">${t.content}</p>
+            </div>
+        `).join('');
+    }
+
+    async function submitAlert(event) {
+        event.preventDefault();
+        const payload = {
+            name: document.getElementById('alertName').value,
+            email: document.getElementById('alertEmail').value,
+            phone: document.getElementById('alertPhone').value,
+            location: document.getElementById('alertLocation').value,
+            disease_type: document.getElementById('alertDisease').value,
+            cases: document.getElementById('alertCases').value,
+            details: document.getElementById('alertDetails').value
+        };
+
+        for (const key of ['name','email','phone','location','disease_type','cases']) {
+            if (!payload[key]) { 
+                showNotification('Please fill all required fields', 'error'); 
+                return; 
+            }
+        }
+
+        try {
+            const res = await fetch('/api/alerts/submit', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                showNotification(data.message || 'Alert submitted successfully', 'success');
+                document.getElementById('alertForm').reset();
+            } else {
+                showNotification(data.error || 'Failed to submit alert', 'error');
+            }
+        } catch (err) {
+            console.error('Alert submit error', err);
+            showNotification('Network error while submitting alert', 'error');
+        }
+    }
+
+    // Loading indicator functions
+    function showLoading() { 
+        document.getElementById('loading').classList.add('show'); 
+    }
+    
+    function hideLoading() { 
+        setTimeout(()=> document.getElementById('loading').classList.remove('show'), 300); 
+    }
+
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadMetadata();
+        initializeOverview();
+        createHospitalTrendChart();
+        createCityComparisonChart();
+        create3DPlot();
+        createHotspotFallback();
+    });
+
+        // Authentication functions
+        async function checkAuth() {
+        try {
+            const response = await fetch('/api/auth/profile');
+            if (response.ok) {
+                const user = await response.json();
+                document.getElementById('userWelcome').textContent = `Welcome, ${user.full_name} (${user.role})`;
+                return user;
+            } else {
+                // Not authenticated, redirect to login
+                window.location.href = '/login';
+                return null;
+            }
+        } catch (error) {
+            console.error('Auth check error:', error);
+            window.location.href = '/login';
+            return null;
+        }
+    }
+    
+    async function logout() {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            showNotification('Logged out successfully', 'success');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1000);
+        } catch (error) {
+            console.error('Logout error:', error);
+            window.location.href = '/login';
+        }
+    }
+
+    // Resize charts on window resize
+    window.addEventListener('resize', () => {
+        Object.values(currentCharts).forEach(c => { 
+            if (c && c.resize) {
+                try { c.resize(); } catch(e){} 
+            }
+        });
+    });
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+document.getElementById('mlForm').addEventListener('submit', async function(e){
+    e.preventDefault(); // prevent normal form POST
+
+    const formData = new FormData(this);
+    const response = await fetch('/predict', {
+        method: 'POST',
+        body: formData
+    });
+
+    const data = await response.json(); // JSON from Flask
+
+    const container = document.getElementById('mlResult');
+    let html = '<h3>Top 3 Predicted Diseases:</h3><ul>';
+    data.top_diseases.forEach(d => {
+        html += `<li>${d.Disease} → ${(d.Probability*100).toFixed(2)}%</li>`;
+    });
+    html += `</ul><h3>Risk Score: ${data.risk_score.toFixed(2)} → ${data.risk_level}</h3>`;
+
+    container.innerHTML = html;
+    container.style.display = 'block';
+});
+
+</script>
+</body>
+</html>
