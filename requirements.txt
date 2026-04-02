@@ -1,0 +1,11 @@
+flask
+pandas
+numpy
+matplotlib
+seaborn
+openpyxl
+requests
+werkzeug
+scikit-learn
+gunicorn
+pickle5
