@@ -19,7 +19,9 @@ from openpyxl.styles import Font, Alignment, PatternFill
 from openpyxl.chart import BarChart, LineChart, Reference
 import tempfile
 import sqlite3
+import requests
 import secrets
+
 from functools import wraps
 
 app = Flask(__name__)
@@ -1358,14 +1360,6 @@ def upload_file():
         logger.error(f"Error in file upload: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'Not found'}), 404
-
-@app.errorhandler(500)
-def internal_error(error):
-    return jsonify({'error': 'Internal server error'}), 500
-
 @app.route('/show_alerts')
 def show_alerts():
     conn = sqlite3.connect("alerts.db")
@@ -1374,15 +1368,54 @@ def show_alerts():
     rows = cursor.fetchall()
     conn.close()
     return {"alerts": rows}
+
 #################################################################################################################################################################
 
+# ── Google Drive model loader ──────────────────────────────────────────────────
+def download_from_gdrive(file_id: str, destination: str):
+    """Download a file from Google Drive, handling the large-file confirm token."""
+    URL = "https://docs.google.com/uc?export=download&confirm=t"
+    session = requests.Session()
+    response = session.get(URL, params={'id': file_id}, stream=True)
+
+    # Extract confirmation token for files >100 MB
+    token = next(
+        (v for k, v in response.cookies.items() if k.startswith('download_warning')),
+        None
+    )
+    if token:
+        response = session.get(URL, params={'id': file_id, 'confirm': token}, stream=True)
+
+    with open(destination, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=32768):
+            if chunk:
+                f.write(chunk)
+    logger.info(f"Downloaded {destination} from Google Drive.")
+
+
+MODEL_PATH   = 'disease_model.pkl'
+COLUMNS_PATH = 'model_columns.pkl'
+
+MODEL_GDRIVE_ID   = '1ZsUMNANPAwTqARS8RPRKKKhhYASL1wCM'   # disease_model.pkl
+COLUMNS_GDRIVE_ID = 'YOUR_COLUMNS_FILE_ID_HERE'             # ← paste model_columns.pkl Drive file ID here
+
+if not os.path.exists(MODEL_PATH):
+    logger.info("Downloading disease_model.pkl from Google Drive ...")
+    download_from_gdrive(MODEL_GDRIVE_ID, MODEL_PATH)
+    logger.info("disease_model.pkl download complete.")
+
+if not os.path.exists(COLUMNS_PATH):
+    logger.info("Downloading model_columns.pkl from Google Drive ...")
+    download_from_gdrive(COLUMNS_GDRIVE_ID, COLUMNS_PATH)
+    logger.info("model_columns.pkl download complete.")
 
 # Load model and columns
-with open('disease_model.pkl', 'rb') as f:
+with open(MODEL_PATH, 'rb') as f:
     model = pickle.load(f)
 
-with open('model_columns.pkl', 'rb') as f:
+with open(COLUMNS_PATH, 'rb') as f:
     model_columns = pickle.load(f)
+# ──────────────────────────────────────────────────────────────────────────────
 
 # Risk score function
 def compute_risk_score(city, month, year, temp, preci, lai, latitude, longitude, past_cases=0):
@@ -1399,8 +1432,8 @@ def compute_risk_score(city, month, year, temp, preci, lai, latitude, longitude,
     else:
         risk_level = 'High'
     return risk_score, risk_level
-# Prediction route
 
+# Prediction route
 from flask import jsonify
 
 @app.route('/predict', methods=['POST'])
@@ -1448,13 +1481,11 @@ def predict():
     # Send top 3 diseases + risk info to HTML
     top_diseases = disease_probs.head(3).to_dict(orient='records')
 
-    
-
     return jsonify({
-    'top_diseases': top_diseases,
-    'risk_score': risk_score,
-    'risk_level': risk_level
-})
+        'top_diseases': top_diseases,
+        'risk_score': risk_score,
+        'risk_level': risk_level
+    })
 
 
 if __name__ == '__main__':
