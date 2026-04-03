@@ -1370,69 +1370,11 @@ def show_alerts():
     return {"alerts": rows}
 
 #################################################################################################################################################################
-
-def download_from_gdrive(file_id: str, destination: str):
-    """Download a file from Google Drive using gdown-style URL."""
-    import urllib.request
-
-    # Try method 1: direct download URL
-    url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t"
-    
-    session_req = requests.Session()
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-    
-    response = session_req.get(url, headers=headers, stream=True)
-    
-    # Handle virus scan warning page for large files
-    if 'text/html' in response.headers.get('Content-Type', ''):
-        # Parse the confirm token from the HTML page
-        import re
-        content = response.text
-        match = re.search(r'confirm=([0-9A-Za-z_\-]+)', content)
-        if match:
-            confirm_token = match.group(1)
-            url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={confirm_token}"
-            response = session_req.get(url, headers=headers, stream=True)
-        else:
-            # Try alternate download URL format
-            url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
-            response = session_req.get(url, headers=headers, stream=True)
-
-    with open(destination, 'wb') as f:
-        for chunk in response.iter_content(chunk_size=32768):
-            if chunk:
-                f.write(chunk)
-    
-    # Verify file is not HTML (corrupted download)
-    with open(destination, 'rb') as f:
-        header = f.read(10)
-    if header.startswith(b'<!DOCTYPE') or header.startswith(b'<html'):
-        os.remove(destination)
-        raise ValueError(f"Downloaded file is HTML, not a valid pickle. Check Drive sharing for ID: {file_id}")
-    
-    logger.info(f"Downloaded {destination} from Google Drive.")
+# Load model and columns directly from repo
 MODEL_PATH   = 'disease_model.pkl'
 COLUMNS_PATH = 'model_columns.pkl'
 
-MODEL_GDRIVE_ID   = '13A62YnXiK1mAHcZpeD_jaAr_X-njHRck'   # disease_model.pkl
-COLUMNS_GDRIVE_ID = '1ZsUMNANPAwTqARS8RPRKKKhhYASL1wCM'   # model_columns.pkl
 
-# Force fresh download on every deploy to avoid corrupted files
-if os.path.exists(MODEL_PATH):
-    os.remove(MODEL_PATH)
-if os.path.exists(COLUMNS_PATH):
-    os.remove(COLUMNS_PATH)
-
-logger.info("Downloading disease_model.pkl from Google Drive ...")
-download_from_gdrive(MODEL_GDRIVE_ID, MODEL_PATH)
-logger.info("disease_model.pkl download complete.")
-
-logger.info("Downloading model_columns.pkl from Google Drive ...")
-download_from_gdrive(COLUMNS_GDRIVE_ID, COLUMNS_PATH)
-logger.info("model_columns.pkl download complete.")
-# Load model and columns
 with open(MODEL_PATH, 'rb') as f:
     model = pickle.load(f)
 
